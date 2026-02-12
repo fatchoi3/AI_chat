@@ -21,7 +21,21 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+  console.log(`서버 실행 중 : 포트 ${PORT}`);
   console.log(`Server listening on port ${PORT}`);
+});
+
+// POST 요청 받는 라우트 추가
+app.post('/api/messages', (req, res) => {
+  const { text } = req.body;  // 클라이언트가 보낸 메시지 텍스트 받음
+  console.log('받은 메시지:', text);
+
+  // 메시지를 저장하거나, AI 처리 후 응답 생성 가능
+  // 여기서는 예시로 메시지 그대로 다시 보내줄게
+  res.json({
+    id: Date.now().toString(),
+    text: `서버에서 받은 메시지: ${text}`
+  });
 });
 
 async function connectDB() {
