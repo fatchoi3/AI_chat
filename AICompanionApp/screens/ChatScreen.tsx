@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TextInput, Button, FlatList, Text, StyleSheet, ListRenderItem } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import uuid from 'react-native-uuid'
 
 
 type Message = {
@@ -24,7 +25,14 @@ export default function ChatScreen() {
     };
 
     ws.current.onmessage = (event) => {
-      setMessages(prev => [...prev, event.data]);
+      console.log("도착 함?")
+      console.log(event.data)
+      let receivedText = '';
+      if(typeof event.data === 'string'){
+        receivedText = JSON.parse(event.data)?.text || '';
+      }
+      console.log(` receivedText ${receivedText}`)
+      setMessages(prev => [...prev, { id: Date.now().toString(), text: receivedText, isMine : false }]);
     };
 
     ws.current.onerror = (error) => {
@@ -49,7 +57,7 @@ export default function ChatScreen() {
     }, 100);
 
     try {
-        const response = await fetch('ec2-3-104-35-93.ap-southeast-2.compute.amazonaws.com:5000/api/messages', {
+        const response = await fetch('http://ec2-3-104-35-93.ap-southeast-2.compute.amazonaws.com:5000/api/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: inputText }),
@@ -57,10 +65,10 @@ export default function ChatScreen() {
         const data = await response.json();
 
         // 서버 응답 메시지 추가
-        setMessages(prev => [
-            ...prev,
-            { id: Date.now().toString(), text: data.text, isMine: false },
-        ]);
+        // setMessages(prev => [
+        //     ...prev,
+        //     { id: Date.now().toString(), text: data.text, isMine: false },
+        // ]);
         setTimeout(() => {
             flatListRef.current?.scrollToEnd({ animated: true });
         }, 100);
@@ -111,7 +119,7 @@ export default function ChatScreen() {
         <View style={styles.container}>
             <FlatList
                 data={messages}
-                keyExtractor={item => item.id}
+                keyExtractor={(item, index) => index.toString()}
                 renderItem={renderItem}
                 ref={flatListRef}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}

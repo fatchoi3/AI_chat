@@ -35,6 +35,7 @@ app.post('/api/messages', (req, res) => {
   // WebSocket 클라이언트에게 브로드캐스트 (ws 서버 쪽 코드 참고)
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
+      console.log("22222")
       client.send(message);
     }
   });

@@ -3784,6 +3784,11 @@ react-native-safe-area-context@^5.6.2:
   resolved "https://registry.npmjs.org/react-native-safe-area-context/-/react-native-safe-area-context-5.6.2.tgz"
   integrity sha512-4XGqMNj5qjUTYywJqpdWZ9IG8jgkS3h06sfVjfw5yZQZfWnRFXczi0GnYyFyCc2EBps/qFmoCH8fez//WumdVg==
 
+react-native-uuid@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.npmjs.org/react-native-uuid/-/react-native-uuid-2.0.3.tgz"
+  integrity sha512-f/YfIS2f5UB+gut7t/9BKGSCYbRA9/74A5R1MDp+FLYsuS+OSWoiM/D8Jko6OJB6Jcu3v6ONuddvZKHdIGpeiw==
+
 react-native@*, react-native@0.81.5:
   version "0.81.5"
   resolved "https://registry.npmjs.org/react-native/-/react-native-0.81.5.tgz"
