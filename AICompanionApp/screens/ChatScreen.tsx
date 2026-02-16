@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TextInput, Button, FlatList, Text, StyleSheet, ListRenderItem } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import uuid from 'react-native-uuid'
-
+import { KeyboardAvoidingView, Platform } from 'react-native';
 
 type Message = {
   id: string;
   text: string;
   isMine: boolean;
+};
+
+type ApiResponse = {
+  reply: string;
 };
 
 export default function ChatScreen() {
@@ -18,6 +21,7 @@ export default function ChatScreen() {
   
   //==== Socket
   useEffect(() => {
+    getAllMessages();
     ws.current = new WebSocket('ws://ec2-3-104-35-93.ap-southeast-2.compute.amazonaws.com:5101');
 
     ws.current.onopen = () => {
@@ -47,23 +51,56 @@ export default function ChatScreen() {
       ws.current?.close();
     };
   }, []);
-
-  const sendMessage = async () => {
-    if (inputText.trim() === '') return;
-    setMessages(prev => [...prev, { id: Date.now().toString(), text: inputText, isMine : true }]);
-    setInputText('');
-    setTimeout(() => {
+  
+  const sendMessageToAPI = async () => {
+  // const sendMessageToAPI = async (message: string): Promise<string> => {
+    try {
+      setMessages(prev => [...prev, { id: Date.now().toString(), text: inputText, isMine : true }]);
+      const res = await fetch('http://ec2-3-104-35-93.ap-southeast-2.compute.amazonaws.com:5000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message:inputText }),
+      });
+  
+      if (!res.ok) {
+        console.error('서버 응답 에러:', res.statusText);
+        return '';
+      }
+      const json: ApiResponse = await res.json();
+      console.log("json",json)
+      setMessages(prev => [...prev, { id: Date.now().toString(), text: json.reply, isMine : false }]);
+      setInputText('');
+      setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+      }, 100);
+      
+    } catch (error) {
+      console.error('API 호출 실패:', error);
+      return '';
+    }
+  };
+
+  const getAllMessages = async () => {
 
     try {
-        const response = await fetch('http://ec2-3-104-35-93.ap-southeast-2.compute.amazonaws.com:5000/api/messages', {
-            method: 'POST',
+        const response = await fetch('http://ec2-3-104-35-93.ap-southeast-2.compute.amazonaws.com:5000/api/chat/history', {
+            method: 'GET',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: inputText }),
         });
         const data = await response.json();
-
+        for(let i = data.length-1; i > -1; i--){
+          let messageObj = data[i];
+          let userMsg = messageObj.user_message;
+          setMessages(prev => [
+            ...prev,
+            { id: Date.now().toString(), text: userMsg, isMine: true },
+          ]);
+          let botAnswer = messageObj.bot_reply;
+          setMessages(prev => [
+            ...prev,
+            { id: Date.now().toString(), text: botAnswer, isMine: false },
+          ]);
+        }
         // 서버 응답 메시지 추가
         // setMessages(prev => [
         //     ...prev,
@@ -76,30 +113,6 @@ export default function ChatScreen() {
         console.error('메시지 전송 실패:', error);
     }
   };
-// ======= 폴링 방식
-//   // 3초마다 서버에 메시지 요청하는 폴링
-//   useEffect(() => {
-//     const interval = setInterval(async () => {
-//       try {
-//         const res = await fetch('http://ec2-13-236-201-252.ap-southeast-2.compute.amazonaws.com:5000/api/messages',{
-//             method: 'POST',
-//             headers: { 'Content-Type': 'application/json' },
-//             body: JSON.stringify({ text: '' }),
-//         });
-//         const data = await res.json();
-//         console.log('폴링 중 오류:', data);
-//         // setMessages(data);
-//         setMessages(prev => [
-//             ...prev,
-//             { id: Date.now().toString(), text: data.text, isMine: false },
-//         ]);
-//       } catch (error) {
-//         console.error('폴링 중 오류:', error);
-//       }
-//     }, 3000); // 3초 주기
-
-//     return () => clearInterval(interval); // 언마운트 시 정리
-//   }, []);
 
   const renderItem: ListRenderItem<Message> = ({ item }) => {
     const isMyMessage = item.isMine; // 메시지 객체에 isMine 같은 boolean 프로퍼티 추가
@@ -116,6 +129,11 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={{ flex:1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+      >
         <View style={styles.container}>
             <FlatList
                 data={messages}
@@ -131,10 +149,13 @@ export default function ChatScreen() {
                 value={inputText}
                 onChangeText={setInputText}
                 />
-                <Button title="전송" onPress={sendMessage} />
+                <Button title="전송" onPress={sendMessageToAPI} />
+                {/* <Button title="전송" onPress={sendMessage} /> */}
             </View>
         </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
+    
   );
 }
 

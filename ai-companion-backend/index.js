@@ -35,13 +35,64 @@ app.post('/api/messages', (req, res) => {
   // WebSocket 클라이언트에게 브로드캐스트 (ws 서버 쪽 코드 참고)
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      console.log("22222")
       client.send(message);
     }
   });
 
   res.status(200).json({ status: 'ok' });
 });
+
+// // 1. OpenAI API 연동 (Node.js 예제)
+// const { Configuration, OpenAIApi } = require("openai");
+
+// const configuration = new Configuration({
+//   apiKey: process.env.OPENAI_API_KEY,
+// });
+// const openai = new OpenAIApi(configuration);
+const OpenAI = require("openai");
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// 2. 대화 이력 DB 저장 함수 (PostgreSQL)
+const saveChatHistory = async (userMsg, botMsg) => {
+  await client.query(
+    'INSERT INTO chat_history (user_message, bot_reply) VALUES ($1, $2)',
+    [userMsg, botMsg]
+  );
+};
+
+// 3. 대화 요청 API 라우터 (Express)
+app.post('/api/chat', async (req, res) => {
+  const { message } = req.body;
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: message }],
+    });
+    const reply = response.choices[0].message.content;
+    
+    // 대화 이력 저장
+    await saveChatHistory(message, reply);
+    res.json({ reply });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'API 호출 실패' });
+  }
+});
+
+// 4. 대화 이력 조회 API 라우터
+app.get('/api/chat/history', async (req, res) => {
+  try {
+    console.log("api/chat/history")
+    const result = await client.query('SELECT * FROM chat_history ORDER BY created_at DESC LIMIT 50');
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'DB 조회 실패' });
+  }
+});
+
 
 // PostgreSQL 연결 함수 (실행 시 DB 연결 확인)
 async function connectDB() {
